@@ -296,12 +296,17 @@ export default class SipProvider extends React.Component<
     this.ua.terminateSessions();
   };
 
-  public sendDTMF = ( value ) => {
-    if( this.state.callStatus === "callStatus/ACTIVE" && this.state.dtmfSender ) {
+  public sendDTMF = (value) => {
+    if (
+      this.state.callStatus === "callStatus/ACTIVE" &&
+      this.state.dtmfSender
+    ) {
       this.state.dtmfSender.insertDTMF(value);
-    }
-    else {
-      this.logger.debug("Warning:", "You are attempting to send DTMF, but there is no active call.")
+    } else {
+      this.logger.debug(
+        "Warning:",
+        "You are attempting to send DTMF, but there is no active call.",
+      );
     }
   };
 
@@ -513,7 +518,9 @@ export default class SipProvider extends React.Component<
           ] = rtcSession.connection.getRemoteStreams();
 
           // Set up DTMF
-          this.setState({dtmfSender: rtcSession.connection.getSenders()[0].dtmf});
+          this.setState({
+            dtmfSender: rtcSession.connection.getSenders()[0].dtmf,
+          });
 
           // const played = this.remoteAudio.play();
           const played = this.remoteAudio.play();
