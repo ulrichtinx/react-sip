@@ -164,9 +164,6 @@ export default class SipProvider extends React.Component<
 
     this.remoteAudio = window.document.createElement("audio");
     this.remoteAudio.id = "sip-provider-audio";
-    if (this.props.incomingAudioDeviceId) {
-      this.remoteAudio.setSinkId(this.props.incomingAudioDeviceId);
-    }
     window.document.body.appendChild(this.remoteAudio);
 
     this.reconfigureDebug();
@@ -183,7 +180,9 @@ export default class SipProvider extends React.Component<
       this.props.pathname !== prevProps.pathname ||
       this.props.user !== prevProps.user ||
       this.props.password !== prevProps.password ||
-      this.props.autoRegister !== prevProps.autoRegister
+      this.props.autoRegister !== prevProps.autoRegister ||
+      this.props.incomingAudioDeviceId !== prevProps.incomingAudioDeviceId ||
+      this.props.outboundAudioDeviceId !== prevProps.outboundAudioDeviceId
     ) {
       this.reinitializeJsSIP();
     }
@@ -318,7 +317,16 @@ export default class SipProvider extends React.Component<
       this.ua = null;
     }
 
-    const { host, port, pathname, user, password, autoRegister } = this.props;
+    const {
+      host,
+      port,
+      pathname,
+      user,
+      password,
+      autoRegister,
+      incomingAudioDeviceId,
+      outboundAudioDeviceId,
+    } = this.props;
 
     if (!host || !port || !user) {
       this.setState({
@@ -327,6 +335,10 @@ export default class SipProvider extends React.Component<
         sipErrorMessage: null,
       });
       return;
+    }
+
+    if (incomingAudioDeviceId) {
+      this.remoteAudio.setSinkId(incomingAudioDeviceId);
     }
 
     try {
@@ -475,6 +487,8 @@ export default class SipProvider extends React.Component<
             return;
           }
 
+          this.remoteAudio.srcObject = null;
+
           this.setState({
             rtcSession: null,
             callStatus: CALL_STATUS_IDLE,
@@ -487,6 +501,8 @@ export default class SipProvider extends React.Component<
           if (this.ua !== ua) {
             return;
           }
+
+          this.remoteAudio.srcObject = null;
 
           this.setState({
             rtcSession: null,
@@ -502,12 +518,12 @@ export default class SipProvider extends React.Component<
           }
 
           // Set outbound device, if provided
-          if (this.props.outboundAudioDeviceId) {
+          if (outboundAudioDeviceId) {
             // Get the appropriate device and set the new stream
             const constraints = {
               audio: {
                 deviceId: {
-                  exact: this.props.outboundAudioDeviceId,
+                  exact: outboundAudioDeviceId,
                 },
               },
             };
