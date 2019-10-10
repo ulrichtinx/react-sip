@@ -1,16 +1,21 @@
-# React SIP
+# Notice
 
-[![license](https://img.shields.io/github/license/callthemonline/react-sip.svg)](https://github.com/callthemonline/react-sip/blob/master/LICENSE)
-[![npm version](https://img.shields.io/npm/v/react-sip.svg)](https://www.npmjs.com/package/react-sip)
-[![npm downloads](https://img.shields.io/npm/dy/react-sip.svg)](https://www.npmjs.com/package/react-sip)
-[![build status](https://travis-ci.org/callthemonline/react-sip.svg?branch=master)](https://travis-ci.org/callthemonline/react-sip)
+Please note that this is just a version of [react-sip](https://github.com/callthemonline/react-sip)
+with pull requests [#27](https://github.com/callthemonline/react-sip/pull/27) and [#28](https://github.com/callthemonline/react-sip/pull/28)
+merged. We are primarily hosting it on NPM for our own use, but feel free
+to include this in your project if you need any of those features.
+
+All changes are made by [evercall](https://evercall.dk) for our own use,
+and we do not provide any kind of support for react-sip.
+
+# React SIP
 
 React wrapper for [jssip](https://github.com/versatica/JsSIP).
 
 ## Installation
 
 ```bash
-npm install react-sip
+npm install @evercall/react-sip
 ```
 
 There is no need to install `jssip` as it is a dependency of `react-sip`.

@@ -1,6 +1,6 @@
 {
-  "name": "react-sip",
-  "version": "0.8.1",
+  "name": "@evercall/react-sip",
+  "version": "0.9.0",
   "description": "React wrapper for jssip",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
