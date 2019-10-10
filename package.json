@@ -1,6 +1,6 @@
 {
   "name": "@evercall/react-sip",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "React wrapper for jssip",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,7 +14,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/callthemonline/react-sip.git"
+    "url": "https://github.com/jonasclement/react-sip"
   },
   "keywords": [
     "react",
@@ -22,12 +22,12 @@
     "jssip",
     "webrtc"
   ],
-  "author": "callthemonline (https://callthem.online/)",
+  "author": "evercall ApS (https://evercall.dk/)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/callthemonline/react-sip/issues"
+    "url": "https://github.com/jonasclement/react-sip/issues"
   },
-  "homepage": "https://github.com/callthemonline/react-sip#readme",
+  "homepage": "https://github.com/jonasclement/react-sip#readme",
   "dependencies": {
     "jssip": "^3.2.15",
     "prop-types": "^15.6.2"
