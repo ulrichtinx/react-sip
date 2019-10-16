@@ -553,6 +553,7 @@ export default class SipProvider extends React.Component<
             callStatus: CALL_STATUS_IDLE,
             callDirection: null,
             callCounterpart: null,
+            callIsOnHold: false,
             dtmfSender: null,
             callMicrophoneIsMuted: false,
           });
