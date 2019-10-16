@@ -63,7 +63,8 @@ export const callPropType = PropTypes.shape({
   status: PropTypes.string,
   direction: PropTypes.string,
   counterpart: PropTypes.string,
+  isOnHold: PropTypes.bool,
   hold: PropTypes.func,
   unhold: PropTypes.func,
-  isOnHold: PropTypes.bool,
+  toggleHold: PropTypes.func,
 });
