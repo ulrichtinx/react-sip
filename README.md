@@ -130,6 +130,9 @@ The omitted host part is equal to host you’ve defined in `SipProvider` props (
 
 During a call you can put it on hold using the `call.hold()` and `call.unhold()` functions. You can also get hold status with the `call.isOnHold` property.
 
+You may also mute your microphone during calls with the `call.toggleMuteMicrophone()`, `call.muteMicrophone` and `call.unmuteMicrophone` methods.  
+You can check whether the microphone is used with the `call.microphoneIsMuted` property.
+
 To send DTMF tones while in-call, you can use this function:
 
 `sendDTMF(tones)`
