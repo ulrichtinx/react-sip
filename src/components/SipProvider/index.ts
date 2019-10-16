@@ -152,6 +152,7 @@ export default class SipProvider extends React.Component<
         isOnHold: this.state.callIsOnHold,
         hold: this.callHold,
         unhold: this.callUnhold,
+        toggleHold: this.callToggleHold,
       },
       registerSip: this.registerSip,
       unregisterSip: this.unregisterSip,
@@ -668,5 +669,12 @@ export default class SipProvider extends React.Component<
       };
       this.state.rtcSession.unhold(options, done);
     }
+  };
+
+  private callToggleHold = (useUpdate = false) => {
+    const holdStatus = this.state.rtcSession.isOnHold();
+    return holdStatus.local
+      ? this.callUnhold(useUpdate)
+      : this.callHold(useUpdate);
   };
 }
