@@ -532,6 +532,11 @@ export default class SipProvider extends React.Component<
             return;
           }
 
+          // Close senders, as these keep the microphone open according to browsers (and that keeps Bluetooth headphones from exiting headset mode)
+          this.state.rtcSession.connection.getSenders().forEach((sender) => {
+            sender.track.stop();
+          });
+
           this.setState({
             rtcSession: null,
             callStatus: CALL_STATUS_IDLE,
