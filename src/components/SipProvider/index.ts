@@ -497,6 +497,7 @@ export default class SipProvider extends React.Component<
             callStatus: CALL_STATUS_STARTING,
             callCounterpart:
               foundUri.substring(0, delimiterPosition) || foundUri,
+            callIsOnHold: rtcSession.isOnHold().local,
           });
         }
 
