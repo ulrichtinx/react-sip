@@ -3,6 +3,7 @@ import * as PropTypes from "prop-types";
 export interface ExtraHeaders {
   register?: string[];
   invite?: string[];
+  hold?: string[];
 }
 export const extraHeadersPropType = PropTypes.objectOf(
   PropTypes.arrayOf(PropTypes.string),
@@ -62,4 +63,7 @@ export const callPropType = PropTypes.shape({
   status: PropTypes.string,
   direction: PropTypes.string,
   counterpart: PropTypes.string,
+  hold: PropTypes.func,
+  unhold: PropTypes.func,
+  isOnHold: PropTypes.bool,
 });
