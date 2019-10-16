@@ -59,6 +59,7 @@ export default class SipProvider extends React.Component<
     callCounterpart: string | null;
     dtmfSender: RTCDTMFSender | null;
     callIsOnHold: boolean;
+    callMicrophoneIsMuted: boolean;
     rtcSession;
   }
 > {
@@ -130,6 +131,7 @@ export default class SipProvider extends React.Component<
       callCounterpart: null,
       dtmfSender: null,
       callIsOnHold: false,
+      callMicrophoneIsMuted: false,
     };
 
     this.ua = null;
@@ -153,6 +155,10 @@ export default class SipProvider extends React.Component<
         hold: this.callHold,
         unhold: this.callUnhold,
         toggleHold: this.callToggleHold,
+        microphoneIsMuted: this.state.callMicrophoneIsMuted,
+        muteMicrophone: this.callMuteMicrophone,
+        unmuteMicrophone: this.callUnmuteMicrophone,
+        toggleMuteMicrophone: this.callToggleMuteMicrophone,
       },
       registerSip: this.registerSip,
       unregisterSip: this.unregisterSip,
@@ -489,6 +495,7 @@ export default class SipProvider extends React.Component<
             callCounterpart:
               foundUri.substring(0, delimiterPosition) || foundUri,
             callIsOnHold: rtcSession.isOnHold().local,
+            callMicrophoneIsMuted: rtcSession.isMuted().audio,
           });
         } else if (originator === "remote") {
           const foundUri = rtcRequest.from.toString();
@@ -499,6 +506,7 @@ export default class SipProvider extends React.Component<
             callCounterpart:
               foundUri.substring(0, delimiterPosition) || foundUri,
             callIsOnHold: rtcSession.isOnHold().local,
+            callMicrophoneIsMuted: rtcSession.isMuted().audio,
           });
         }
 
@@ -526,6 +534,7 @@ export default class SipProvider extends React.Component<
             callDirection: null,
             callCounterpart: null,
             dtmfSender: null,
+            callMicrophoneIsMuted: false,
           });
         });
 
@@ -545,6 +554,7 @@ export default class SipProvider extends React.Component<
             callDirection: null,
             callCounterpart: null,
             dtmfSender: null,
+            callMicrophoneIsMuted: false,
           });
         });
 
@@ -676,5 +686,25 @@ export default class SipProvider extends React.Component<
     return holdStatus.local
       ? this.callUnhold(useUpdate)
       : this.callHold(useUpdate);
+  };
+
+  private callMuteMicrophone = () => {
+    if (this.state.rtcSession && !this.state.callMicrophoneIsMuted) {
+      this.state.rtcSession.mute({ audio: true, video: false });
+      this.setState({ callMicrophoneIsMuted: true });
+    }
+  };
+
+  private callUnmuteMicrophone = () => {
+    if (this.state.rtcSession && this.state.callMicrophoneIsMuted) {
+      this.state.rtcSession.unmute({ audio: true, video: false });
+      this.setState({ callMicrophoneIsMuted: false });
+    }
+  };
+
+  private callToggleMuteMicrophone = () => {
+    return this.state.callMicrophoneIsMuted
+      ? this.callUnmuteMicrophone()
+      : this.callMuteMicrophone();
   };
 }
