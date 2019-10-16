@@ -310,12 +310,12 @@ export default class SipProvider extends React.Component<
     this.ua.terminateSessions();
   };
 
-  public sendDTMF = (value) => {
+  public sendDTMF = (tones, duration = 100, interToneGap = 70) => {
     if (
       this.state.callStatus === "callStatus/ACTIVE" &&
       this.state.dtmfSender
     ) {
-      this.state.dtmfSender.insertDTMF(value);
+      this.state.dtmfSender.insertDTMF(tones, duration, interToneGap);
     } else {
       this.logger.debug(
         "Warning:",

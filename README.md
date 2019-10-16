@@ -130,7 +130,10 @@ The omitted host part is equal to host you’ve defined in `SipProvider` props (
 
 To send DTMF tones while in-call, you can use this function:
 
-`sendDTMF(value)`
+`sendDTMF(tones)`
+
+You can pass as many tones as you want in a `string` (e.g. `sendDTMF("1234")`).  
+You may also specify `duration` and `interToneGap` in milliseconds, as `sendDTMF("1234", 100, 70)`. See [the MDN docs for `RTCDTMFSender.insertDTMF()`](https://developer.mozilla.org/en-US/docs/Web/API/RTCDTMFSender/insertDTMF) for further details.
 
 The DTMF implementation is **not** SIP INFO, but [RFC-4733](https://tools.ietf.org/html/rfc4733).
 
