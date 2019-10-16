@@ -58,6 +58,7 @@ export default class SipProvider extends React.Component<
     callDirection: CallDirection | null;
     callCounterpart: string | null;
     dtmfSender: RTCDTMFSender | null;
+    callIsOnHold: boolean;
     rtcSession;
   }
 > {
@@ -102,7 +103,7 @@ export default class SipProvider extends React.Component<
     autoAnswer: false,
     iceRestart: false,
     sessionTimersExpires: 120,
-    extraHeaders: { register: [], invite: [] },
+    extraHeaders: { register: [], invite: [], hold: [] },
     iceServers: [],
     debug: false,
     incomingAudioDeviceId: "",
@@ -128,6 +129,7 @@ export default class SipProvider extends React.Component<
       callDirection: null,
       callCounterpart: null,
       dtmfSender: null,
+      callIsOnHold: false,
     };
 
     this.ua = null;
@@ -147,6 +149,9 @@ export default class SipProvider extends React.Component<
         direction: this.state.callDirection,
         counterpart: this.state.callCounterpart,
         dtmfSender: this.state.dtmfSender,
+        isOnHold: this.state.callIsOnHold,
+        hold: this.callHold,
+        unhold: this.callUnhold,
       },
       registerSip: this.registerSip,
       unregisterSip: this.unregisterSip,
@@ -482,6 +487,7 @@ export default class SipProvider extends React.Component<
             callStatus: CALL_STATUS_STARTING,
             callCounterpart:
               foundUri.substring(0, delimiterPosition) || foundUri,
+            callIsOnHold: rtcSession.isOnHold().local,
           });
         } else if (originator === "remote") {
           const foundUri = rtcRequest.from.toString();
@@ -629,4 +635,32 @@ export default class SipProvider extends React.Component<
   public render() {
     return this.props.children;
   }
+
+  private callHold = (useUpdate = false) => {
+    const holdStatus = this.state.rtcSession.isOnHold();
+    if (!holdStatus.local) {
+      const options = {
+        useUpdate,
+        extraHeaders: this.props.extraHeaders.hold,
+      };
+      const done = () => {
+        this.setState({ callIsOnHold: true });
+      };
+      this.state.rtcSession.hold(options, done);
+    }
+  };
+
+  private callUnhold = (useUpdate = false) => {
+    const holdStatus = this.state.rtcSession.isOnHold();
+    if (holdStatus.local) {
+      const options = {
+        useUpdate,
+        extraHeaders: this.props.extraHeaders.hold,
+      };
+      const done = () => {
+        this.setState({ callIsOnHold: false });
+      };
+      this.state.rtcSession.unhold(options, done);
+    }
+  };
 }
