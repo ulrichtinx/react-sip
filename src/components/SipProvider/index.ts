@@ -314,10 +314,12 @@ export default class SipProvider extends React.Component<
   public stopCall = () => {
     this.setState({ callStatus: CALL_STATUS_STOPPING });
 
-    // Close senders, as these keep the microphone open according to browsers (and that keeps Bluetooth headphones from exiting headset mode)
-    this.state.rtcSession.connection.getSenders().forEach((sender) => {
-      sender.track.stop();
-    });
+    if (this.state.rtcSession.connection) {
+      // Close senders, as these keep the microphone open according to browsers (and that keeps Bluetooth headphones from exiting headset mode)
+      this.state.rtcSession.connection.getSenders().forEach((sender) => {
+        sender.track.stop();
+      });
+    }
 
     this.ua.terminateSessions();
   };
