@@ -479,6 +479,18 @@ export default class SipProvider extends React.Component<
           return;
         }
 
+
+        const { rtcSession: rtcSessionInState } = this.state;
+        // Avoid if busy or other incoming
+        if (rtcSessionInState) {
+          this.logger.debug('incoming call replied with 486 "Busy Here"');
+          rtcSession.terminate({
+            status_code: 486,
+            reason_phrase: "Busy Here",
+          });
+          return;
+        }
+
         // identify call direction
         if (originator === "local") {
           const foundUri = rtcRequest.to.toString();
@@ -502,18 +514,6 @@ export default class SipProvider extends React.Component<
             callIsOnHold: rtcSession.isOnHold().local,
             callMicrophoneIsMuted: rtcSession.isMuted().audio,
           });
-        }
-
-        const { rtcSession: rtcSessionInState } = this.state;
-
-        // Avoid if busy or other incoming
-        if (rtcSessionInState) {
-          this.logger.debug('incoming call replied with 486 "Busy Here"');
-          rtcSession.terminate({
-            status_code: 486,
-            reason_phrase: "Busy Here",
-          });
-          return;
         }
 
         this.setState({ rtcSession });
