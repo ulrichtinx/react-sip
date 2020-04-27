@@ -206,12 +206,22 @@ export default class SipProvider extends React.Component<
   }
 
   public componentWillUnmount() {
-    this.remoteAudio.parentNode.removeChild(this.remoteAudio);
-    delete this.remoteAudio;
+    this.deleteRemoteAudio();
     if (this.ua) {
       this.ua.stop();
       this.ua = null;
     }
+  }
+
+  private deleteRemoteAudio() {
+    this.remoteAudio.parentNode.removeChild(this.remoteAudio);
+    delete this.remoteAudio;
+  }
+
+  private createRemoteAudio() {
+    this.remoteAudio = window.document.createElement("audio");
+    this.remoteAudio.id = "sip-provider-audio";
+    window.document.body.appendChild(this.remoteAudio);
   }
 
   public registerSip = () => {
@@ -369,6 +379,9 @@ export default class SipProvider extends React.Component<
     }
 
     if (incomingAudioDeviceId) {
+      // We need to call enumerateDevices() to get permission to use the device
+      this.deleteRemoteAudio();
+      this.createRemoteAudio();
       this.remoteAudio.setSinkId(incomingAudioDeviceId);
     }
 
@@ -478,7 +491,6 @@ export default class SipProvider extends React.Component<
         if (!this || this.ua !== ua) {
           return;
         }
-
 
         const { rtcSession: rtcSessionInState } = this.state;
         // Avoid if busy or other incoming
