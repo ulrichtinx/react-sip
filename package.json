@@ -1,6 +1,6 @@
 {
   "name": "@evercall/react-sip",
-  "version": "0.10.4",
+  "version": "0.10.5",
   "description": "React wrapper for jssip",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,7 +14,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/jonasclement/react-sip"
+    "url": "https://github.com/evercall/react-sip"
   },
   "keywords": [
     "react",
@@ -25,9 +25,9 @@
   "author": "evercall ApS (https://evercall.dk/)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/jonasclement/react-sip/issues"
+    "url": "https://github.com/evercall/react-sip/issues"
   },
-  "homepage": "https://github.com/jonasclement/react-sip#readme",
+  "homepage": "https://github.com/evercall/react-sip#readme",
   "dependencies": {
     "jssip": "^3.2.15",
     "prop-types": "^15.6.2"
