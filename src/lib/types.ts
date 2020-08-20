@@ -10,13 +10,13 @@ export const extraHeadersPropType = PropTypes.objectOf(
 );
 
 // https://developer.mozilla.org/en-US/docs/Web/API/RTCIceServer
-export type IceServers = Array<{
+export type IceServers = {
   urls: string | string[];
   username?: string;
   credential?: string;
   credentialType?: string;
   password?: string;
-}>;
+}[];
 export const iceServersPropType = PropTypes.arrayOf(PropTypes.object);
 
 export interface Sip {
