@@ -1,20 +1,27 @@
 {
-  "compilerOptions": {
-    "target": "es5",
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "sourceMap": true,
-    "declaration": true,
-    "strictNullChecks": true,
-    "noImplicitAny": false,
-    "noUnusedLocals": true,
-    "allowSyntheticDefaultImports": false,
-    "pretty": true,
-    "removeComments": true,
-    "lib": ["es6", "esnext.asynciterable", "dom"],
-
-    "outDir": "dist",
-    "rootDir": "src"
-  },
-  "include": ["src"]
+    "compilerOptions": {
+        "target": "es5",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "sourceMap": true,
+        "declaration": true,
+        "strictNullChecks": true,
+        "noImplicitAny": false,
+        "noUnusedLocals": true,
+        "allowSyntheticDefaultImports": false,
+        "pretty": true,
+        "removeComments": true,
+        "lib": [
+            "DOM",
+            "ES2015",
+            "ES2018",
+            "ESNext"
+        ],
+        "newLine": "lf",
+        "outDir": "dist",
+        "rootDir": "src"
+    },
+    "include": [
+        "src"
+    ]
 }
