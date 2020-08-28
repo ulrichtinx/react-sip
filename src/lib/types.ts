@@ -1,4 +1,4 @@
-import * as PropTypes from 'prop-types';
+import * as PropTypes from "prop-types";
 
 export interface ExtraHeaders {
   register?: string[];
@@ -74,7 +74,6 @@ export const callPropType = PropTypes.shape({
   unmuteMicrophone: PropTypes.func,
   toggleMuteMicrophone: PropTypes.func,
 });
-
 
 /**
  * Extended version of {HTMLMediaElement} with typings for the Audio Output Devices API
