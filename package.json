@@ -25,11 +25,13 @@
     "author": "evercall ApS (https://evercall.dk/)",
     "contributors": [
         {
-            "name": "Jonas Clément"
+            "name": "Jonas Clément",
+            "url": "https://github.com/jonasclement"
         },
         {
             "name": "Martin Juul Christiansen",
-            "email": "mjc@evercall.dk"
+            "email": "mjc@evercall.dk",
+            "url": "https://github.com/martin-juul"
         }
     ],
     "license": "Apache-2.0",
