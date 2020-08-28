@@ -1,4 +1,4 @@
-import * as PropTypes from "prop-types";
+import * as PropTypes from 'prop-types';
 
 export interface ExtraHeaders {
   register?: string[];
@@ -6,9 +6,7 @@ export interface ExtraHeaders {
   hold?: string[];
 }
 
-export const extraHeadersPropType = PropTypes.objectOf(
-  PropTypes.arrayOf(PropTypes.string),
-);
+export const extraHeadersPropType = PropTypes.objectOf(PropTypes.arrayOf(PropTypes.string));
 
 // https://developer.mozilla.org/en-US/docs/Web/API/RTCIceServer
 

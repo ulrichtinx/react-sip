@@ -1,4 +1,4 @@
-import { Logger } from "./types";
+import { Logger } from './types';
 
 const dummyLogger: Logger = {
   debug(message?: any, ...optionalParams: any[]): void {
