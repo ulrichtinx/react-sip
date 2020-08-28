@@ -1,29 +1,23 @@
-import * as PropTypes from "prop-types";
+import * as PropTypes from 'prop-types';
 
 export interface ExtraHeaders {
   register?: string[];
   invite?: string[];
   hold?: string[];
 }
+
 export const extraHeadersPropType = PropTypes.objectOf(
   PropTypes.arrayOf(PropTypes.string),
 );
 
 // https://developer.mozilla.org/en-US/docs/Web/API/RTCIceServer
-export type IceServers = {
-  urls: string | string[];
-  username?: string;
-  credential?: string;
-  credentialType?: string;
-  password?: string;
-}[];
-export const iceServersPropType = PropTypes.arrayOf(PropTypes.object);
+
+export const rtcIceServersPropType = PropTypes.arrayOf(PropTypes.object);
 
 export interface Sip {
   status?: string;
   errorType?: string;
   errorMessage?: string;
-
   host?: string;
   port?: number;
   user?: string;
@@ -32,9 +26,11 @@ export interface Sip {
   autoAnswer: boolean;
   sessionTimersExpires: number;
   extraHeaders: ExtraHeaders;
-  iceServers: IceServers;
+  iceServers: RTCIceServer[];
   debug: boolean;
+  debugNamespaces?: string;
 }
+
 export const sipPropType = PropTypes.shape({
   status: PropTypes.string,
   errorType: PropTypes.string,
@@ -48,8 +44,9 @@ export const sipPropType = PropTypes.shape({
   autoAnswer: PropTypes.bool,
   sessionTimersExpires: PropTypes.number,
   extraHeaders: extraHeadersPropType,
-  iceServers: iceServersPropType,
+  iceServers: rtcIceServersPropType,
   debug: PropTypes.bool,
+  debugNamespaces: PropTypes.string,
 });
 
 export interface Call {
@@ -58,6 +55,7 @@ export interface Call {
   direction: string;
   counterpart: string;
 }
+
 export const callPropType = PropTypes.shape({
   id: PropTypes.string,
   status: PropTypes.string,
@@ -72,3 +70,31 @@ export const callPropType = PropTypes.shape({
   unmuteMicrophone: PropTypes.func,
   toggleMuteMicrophone: PropTypes.func,
 });
+
+
+/**
+ * Extended version of {HTMLMediaElement} with typings for the Audio Output Devices API
+ *
+ * @link https://w3c.github.io/mediacapture-output/#htmlmediaelement-extensions
+ */
+export interface WebAudioHTMLMediaElement extends HTMLMediaElement {
+  readonly sinkId: string;
+
+  /**
+   * Sets the ID of the audio device to use for output and returns a Promise.
+   * This only works when the application is authorized to use the specified device.
+   *
+   * @link @link https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/setSinkId
+   *
+   * @param id
+   */
+  setSinkId(id: string): Promise<undefined>;
+}
+
+export interface Logger {
+  debug(message?: any, ...optionalParams: any[]): void;
+  error(message?: any, ...optionalParams: any[]): void;
+  info(message?: any, ...optionalParams: any[]): void;
+  warn(message?: any, ...optionalParams: any[]): void;
+  log(message?: any, ...optionalParams: any[]): void;
+}
