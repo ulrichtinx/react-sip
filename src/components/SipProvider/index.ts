@@ -304,7 +304,7 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
       };
     }
 
-    if (!options.pcConfig) {
+    if (!options.pcConfig && Array.isArray(this.props.iceServers)) {
       options.pcConfig = {
         rtcpMuxPolicy: 'negotiate',
         iceServers: this.props.iceServers,
