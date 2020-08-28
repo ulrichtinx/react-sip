@@ -20,6 +20,8 @@ export interface Sip {
   errorMessage?: string;
   host?: string;
   port?: number;
+  pathname?: string;
+  secure?: boolean;
   user?: string;
   password?: string;
   autoRegister?: boolean;
@@ -39,6 +41,8 @@ export const sipPropType = PropTypes.shape({
   host: PropTypes.string,
   port: PropTypes.number,
   user: PropTypes.string,
+  pathname: PropTypes.string,
+  secure: PropTypes.bool,
   password: PropTypes.string,
   autoRegister: PropTypes.bool,
   autoAnswer: PropTypes.bool,

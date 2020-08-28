@@ -31,6 +31,7 @@ ReactDOM.render(
     host="sip.example.com"
     port={7443}
     pathname="/ws" // Path in socket URI (e.g. wss://sip.example.com:7443/ws); "" by default
+    secure={true} // if true, the connection will be made over `wss://` else it will default to `ws://`
     user="alice"
     password={sipPassword} // usually required (e.g. from ENV or props)
     autoRegister={true} // true by default, see jssip.UA option register
