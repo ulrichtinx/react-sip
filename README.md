@@ -23,7 +23,7 @@ There is no need to install `jssip` as it is a dependency of `react-sip`.
 ## Usage
 
 ```js
-import { SipProvider } from 'react-sip';
+import { SipProvider } from '@evercall/react-sip';
 import App from './components/App';
 
 ReactDOM.render(
@@ -130,14 +130,14 @@ The omitted host part is equal to host you’ve defined in `SipProvider` props (
 
 During a call you can put it on hold using the `call.hold()` and `call.unhold()` functions. You can also get hold status with the `call.isOnHold` property.
 
-You may also mute your microphone during calls with the `call.toggleMuteMicrophone()`, `call.muteMicrophone` and `call.unmuteMicrophone` methods.  
+You may also mute your microphone during calls with the `call.toggleMuteMicrophone()`, `call.muteMicrophone` and `call.unmuteMicrophone` methods.
 You can check whether the microphone is used with the `call.microphoneIsMuted` property.
 
 To send DTMF tones while in-call, you can use this function:
 
 `sendDTMF(tones)`
 
-You can pass as many tones as you want in a `string` (e.g. `sendDTMF("1234")`).  
+You can pass as many tones as you want in a `string` (e.g. `sendDTMF("1234")`).
 You may also specify `duration` and `interToneGap` in milliseconds, as `sendDTMF("1234", 100, 70)`. See [the MDN docs for `RTCDTMFSender.insertDTMF()`](https://developer.mozilla.org/en-US/docs/Web/API/RTCDTMFSender/insertDTMF) for further details.
 
 The DTMF implementation is **not** SIP INFO, but [RFC-4733](https://tools.ietf.org/html/rfc4733).
