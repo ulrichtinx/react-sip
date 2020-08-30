@@ -9,8 +9,14 @@ export interface ExtraHeaders {
 export const extraHeadersPropType = PropTypes.objectOf(PropTypes.arrayOf(PropTypes.string));
 
 // https://developer.mozilla.org/en-US/docs/Web/API/RTCIceServer
-
-export const rtcIceServersPropType = PropTypes.arrayOf(PropTypes.object);
+export type IceServers = {
+  urls: string | string[];
+  username?: string;
+  credential?: string;
+  credentialType?: string;
+  password?: string;
+}[];
+export const iceServersPropType = PropTypes.arrayOf(PropTypes.object);
 
 export interface Sip {
   status?: string;
@@ -46,7 +52,7 @@ export const sipPropType = PropTypes.shape({
   autoAnswer: PropTypes.bool,
   sessionTimersExpires: PropTypes.number,
   extraHeaders: extraHeadersPropType,
-  iceServers: rtcIceServersPropType,
+  iceServers: iceServersPropType,
   debug: PropTypes.bool,
   debugNamespaces: PropTypes.string,
 });
