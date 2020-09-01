@@ -1,5 +1,5 @@
 import * as JsSIP from 'jssip';
-import { AnswerOptions, RTCSession, TerminateOptions } from 'jssip/lib/RTCSession';
+import { AnswerOptions, RenegotiateOptions, RTCSession, TerminateOptions } from 'jssip/lib/RTCSession';
 import { CallOptions, UnRegisterOptions } from 'jssip/lib/UA';
 import * as PropTypes from 'prop-types';
 import * as React from 'react';
@@ -164,6 +164,7 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
         muteMicrophone: this.callMuteMicrophone,
         unmuteMicrophone: this.callUnmuteMicrophone,
         toggleMuteMicrophone: this.callToggleMuteMicrophone,
+        renegotiate: this.renegotiate,
       },
       registerSip: this.registerSip,
       unregisterSip: this.unregisterSip,
@@ -630,9 +631,13 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
           navigator.mediaDevices
             .getUserMedia(constraints)
             .then((stream) => {
-              rtcSession.connection.getRemoteStreams().forEach((remoteStream) => {
-                rtcSession.connection.removeStream(remoteStream);
-              });
+              console.log({ rtcSession });
+              rtcSession.connection.getSenders().forEach((sender) => {
+                rtcSession.connection.removeStream(sender)
+              })
+              // rtcSession.connection.getRemoteStreams().forEach((remoteStream) => {
+              //   rtcSession.connection.removeStream(remoteStream);
+              // });
               rtcSession.connection.addStream(stream);
             })
             .catch((e) => {
@@ -718,6 +723,15 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
       this.state.rtcSession.hold(options, done);
     }
   };
+
+  renegotiate = (options?: RenegotiateOptions, done?: () => void) => {
+    if (!this.state.rtcSession) {
+      this.logger.warn('renegotiate: no-op as there\'s no active rtcSession');
+      return; // no-op
+    }
+
+    this.state.rtcSession.renegotiate(options, done)
+  }
 
   callUnhold = (useUpdate = false): void => {
     if (!this.state.rtcSession) {
