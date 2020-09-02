@@ -168,7 +168,8 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
       },
       registerSip: this.registerSip,
       unregisterSip: this.unregisterSip,
-
+      audioSinkId: this.audioSinkId,
+      setAudioSinkId: this.setAudioSinkId,
       answerCall: this.answerCall,
       startCall: this.startCall,
       stopCall: this.stopCall,
@@ -382,9 +383,9 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
     }
   }
 
-  set audioSinkId(sinkId: string) {
+  setAudioSinkId = (sinkId: string) => {
     this.remoteAudio?.setSinkId(sinkId);
-  }
+  };
 
   get audioSinkId(): string {
     return this.remoteAudio?.sinkId || 'undefined';
@@ -613,7 +614,7 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
         });
       });
 
-      rtcSession.on('accepted', () => {
+      const acceptHandler = () => {
         if (this.ua !== ua) {
           return;
         }
@@ -631,7 +632,6 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
           navigator.mediaDevices
             .getUserMedia(constraints)
             .then((stream) => {
-              console.log({ rtcSession });
               rtcSession.connection.getSenders().forEach((sender) => {
                 rtcSession.connection.removeStream(sender)
               })
@@ -657,8 +657,8 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
 
         if (typeof played !== 'undefined') {
           played
-            .catch(() => {
-              /**/
+            .catch((e) => {
+              console.error(e);
             })
             .then(() => {
               setTimeout(() => {
@@ -675,7 +675,10 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
         }, 2000);
 
         this.setState({ callStatus: CALL_STATUS_ACTIVE });
-      });
+      }
+
+      rtcSession.on('accepted', () => acceptHandler());
+      rtcSession.on('unhold', () => acceptHandler());
 
       if (this.state.callDirection === CALL_DIRECTION_INCOMING && this.props.autoAnswer) {
         this.logger.log('Answer auto ON');
