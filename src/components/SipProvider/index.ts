@@ -1,5 +1,12 @@
 import * as JsSIP from 'jssip';
-import { AnswerOptions, RenegotiateOptions, RTCSession, TerminateOptions } from 'jssip/lib/RTCSession';
+import {
+  AnswerOptions,
+  HoldEvent,
+  RenegotiateOptions,
+  RTCSession,
+  TerminateOptions,
+} from 'jssip/lib/RTCSession';
+import { IncomingRequest, OutgoingRequest } from 'jssip/lib/SIPMessage';
 import { CallOptions, UnRegisterOptions } from 'jssip/lib/UA';
 import * as PropTypes from 'prop-types';
 import * as React from 'react';
@@ -11,6 +18,8 @@ import {
   CALL_STATUS_IDLE,
   CALL_STATUS_STARTING,
   CALL_STATUS_STOPPING,
+  CallDirection,
+  CallStatus,
   SIP_ERROR_TYPE_CONFIGURATION,
   SIP_ERROR_TYPE_CONNECTION,
   SIP_ERROR_TYPE_REGISTRATION,
@@ -19,15 +28,14 @@ import {
   SIP_STATUS_DISCONNECTED,
   SIP_STATUS_ERROR,
   SIP_STATUS_REGISTERED,
-  CallDirection,
-  CallStatus,
   SipErrorType,
   SipStatus,
 } from '../../lib/enums';
 import {
   callPropType,
   ExtraHeaders,
-  extraHeadersPropType, iceServersPropType,
+  extraHeadersPropType,
+  iceServersPropType,
   Logger,
   sipPropType,
   WebAudioHTMLMediaElement,
@@ -47,7 +55,7 @@ export interface JsSipConfig {
   extraHeaders: ExtraHeaders;
   iceServers: RTCIceServer[];
   debug: boolean;
-  incomingAudioDeviceId: string;
+  inboundAudioDeviceId: string;
   outboundAudioDeviceId: string;
   debugNamespaces?: string | null;
 }
@@ -76,6 +84,8 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
     startCall: PropTypes.func,
     stopCall: PropTypes.func,
     sendDTMF: PropTypes.func,
+    audioSinkId: PropTypes.string,
+    setAudioSinkId: PropTypes.func,
   };
 
   static propTypes = {
@@ -92,7 +102,7 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
     extraHeaders: extraHeadersPropType,
     iceServers: iceServersPropType,
     debug: PropTypes.bool,
-    incomingAudioDeviceId: PropTypes.string,
+    inboundAudioDeviceId: PropTypes.string,
     outboundAudioDeviceId: PropTypes.string,
 
     children: PropTypes.node,
@@ -112,7 +122,7 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
     extraHeaders: { register: [], invite: [], hold: [] },
     iceServers: [],
     debug: false,
-    incomingAudioDeviceId: '',
+    inboundAudioDeviceId: '',
     outboundAudioDeviceId: '',
 
     children: null,
@@ -226,7 +236,7 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
       this.props.user !== prevProps.user ||
       this.props.password !== prevProps.password ||
       this.props.autoRegister !== prevProps.autoRegister ||
-      this.props.incomingAudioDeviceId !== prevProps.incomingAudioDeviceId ||
+      this.props.inboundAudioDeviceId !== prevProps.inboundAudioDeviceId ||
       this.props.outboundAudioDeviceId !== prevProps.outboundAudioDeviceId
     ) {
       this.reinitializeJsSIP();
@@ -247,7 +257,6 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
     try {
       element = this.getRemoteAudioOrFail();
     } catch (e) {
-      this.logger.error(e);
       return;
     }
 
@@ -297,7 +306,7 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
       pcConfig: {
         iceServers: this.props.iceServers,
       },
-    }
+    };
 
     Object.assign(opts, options);
 
@@ -383,8 +392,8 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
     }
   }
 
-  setAudioSinkId = (sinkId: string) => {
-    this.remoteAudio?.setSinkId(sinkId);
+  setAudioSinkId = (sinkId: string): Promise<undefined> => {
+    return this.getRemoteAudioOrFail().setSinkId(sinkId);
   };
 
   get audioSinkId(): string {
@@ -405,7 +414,8 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
       user,
       password,
       autoRegister,
-      incomingAudioDeviceId,
+      // @ts-ignore
+      inboundAudioDeviceId,
       outboundAudioDeviceId,
     } = this.props;
 
@@ -418,11 +428,10 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
       return;
     }
 
-    if (incomingAudioDeviceId) {
-      // We need to call enumerateDevices() to get permission to use the device
-      this.deleteRemoteAudio();
+    if (outboundAudioDeviceId) {
       this.remoteAudio = this.createRemoteAudioElement();
-      await this.remoteAudio.setSinkId(incomingAudioDeviceId);
+      this.logger.debug(`Audio.Inbound: Setting sinkId to ${outboundAudioDeviceId}`);
+      await this.remoteAudio.setSinkId(outboundAudioDeviceId);
     }
 
     try {
@@ -433,8 +442,12 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
         sockets: [socket],
         register: autoRegister,
       });
+      // @ts-ignore
+      window.UA = this.ua;
+      // @ts-ignore
+      window.UA_SOCKET = socket;
     } catch (error) {
-      this.logger.debug('Error', error.message, error);
+      this.logger.error('AUDIO.INCOMING: Could not set sinkId', error);
       this.setState({
         sipStatus: SIP_STATUS_ERROR,
         sipErrorType: SIP_ERROR_TYPE_CONFIGURATION,
@@ -523,172 +536,180 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
       });
     });
 
-    ua.on('newRTCSession', ({ originator, session: rtcSession, request: rtcRequest }) => {
-      if (!this || this.ua !== ua) {
-        return;
-      }
-
-      const { rtcSession: rtcSessionInState } = this.state;
-      // Avoid if busy or other incoming
-      if (rtcSessionInState) {
-        this.logger.debug('incoming call replied with 486 "Busy Here"');
-        rtcSession.terminate({
-          status_code: 486,
-          reason_phrase: 'Busy Here',
-        });
-        return;
-      }
-
-      // identify call direction
-      if (originator === 'local') {
-        const foundUri = rtcRequest.to.toString();
-        const delimiterPosition = foundUri.indexOf(';') || null;
-        this.setState({
-          callDirection: CALL_DIRECTION_OUTGOING,
-          callStatus: CALL_STATUS_STARTING,
-          callCounterpart: foundUri.substring(0, delimiterPosition) || foundUri,
-          callIsOnHold: rtcSession.isOnHold().local,
-          callMicrophoneIsMuted: rtcSession.isMuted().audio,
-        });
-      } else if (originator === 'remote') {
-        const foundUri = rtcRequest.from.toString();
-        const delimiterPosition = foundUri.indexOf(';') || null;
-        this.setState({
-          callDirection: CALL_DIRECTION_INCOMING,
-          callStatus: CALL_STATUS_STARTING,
-          callCounterpart: foundUri.substring(0, delimiterPosition) || foundUri,
-          callIsOnHold: rtcSession.isOnHold().local,
-          callMicrophoneIsMuted: rtcSession.isMuted().audio,
-        });
-      } else {
-        this.logger.warn(`call originator expected to be either local or remote. Got: ${originator}`);
-      }
-
-      this.setState({ rtcSession });
-      rtcSession.on('failed', () => {
-        if (this.ua !== ua) {
+    ua.on('newRTCSession', ({ originator, session: rtcSession, request: rtcRequest }: { originator: 'local' | 'remote' | 'system', session: RTCSession, request: IncomingRequest | OutgoingRequest }) => {
+        // @ts-ignore
+        window.UA_SESSION = rtcSession;
+        if (!this || this.ua !== ua) {
           return;
         }
 
-        if (this.state.rtcSession && this.state.rtcSession.connection) {
-          // Close senders, as these keep the microphone open according to browsers (and that keeps Bluetooth headphones from exiting headset mode)
-          this.state.rtcSession.connection.getSenders().forEach((sender) => {
-            if (sender.track) {
-              sender.track.stop();
-            }
+        const { rtcSession: rtcSessionInState } = this.state;
+        // Avoid if busy or other incoming
+        if (rtcSessionInState) {
+          this.logger.debug('incoming call replied with 486 "Busy Here"');
+          rtcSession.terminate({
+            status_code: 486,
+            reason_phrase: 'Busy Here',
           });
-        }
-
-        this.setState({
-          rtcSession: null,
-          callStatus: CALL_STATUS_IDLE,
-          callDirection: null,
-          callCounterpart: null,
-          dtmfSender: null,
-          callMicrophoneIsMuted: false,
-        });
-      });
-
-      rtcSession.on('ended', () => {
-        if (this.ua !== ua) {
           return;
         }
 
-        if (this.state.rtcSession && this.state.rtcSession.connection) {
-          // Close senders, as these keep the microphone open according to browsers (and that keeps Bluetooth headphones from exiting headset mode)
-          this.state.rtcSession.connection.getSenders().forEach((sender) => {
-            if (sender.track) {
-              sender.track.stop();
-            }
+        // identify call direction
+        if (originator === 'local') {
+          const foundUri = rtcRequest.to.toString();
+          const delimiterPosition = foundUri.indexOf(';') || null;
+          this.setState({
+            callDirection: CALL_DIRECTION_OUTGOING,
+            callStatus: CALL_STATUS_STARTING,
+            callCounterpart: delimiterPosition ? foundUri.substring(0, delimiterPosition) || foundUri : foundUri,
+            callIsOnHold: rtcSession.isOnHold().local,
+            callMicrophoneIsMuted: rtcSession.isMuted().audio || false,
           });
+        } else if (originator === 'remote') {
+          const foundUri = rtcRequest.from.toString();
+          const delimiterPosition = foundUri.indexOf(';') || null;
+          this.setState({
+            callDirection: CALL_DIRECTION_INCOMING,
+            callStatus: CALL_STATUS_STARTING,
+            callCounterpart: delimiterPosition ? foundUri.substring(0, delimiterPosition) || foundUri : foundUri,
+            callIsOnHold: rtcSession.isOnHold().local,
+            callMicrophoneIsMuted: rtcSession.isMuted().audio || false,
+          });
+        } else {
+          this.logger.warn(`call originator expected to be either local or remote. Got: ${originator}`);
         }
 
-        this.setState({
-          rtcSession: null,
-          callStatus: CALL_STATUS_IDLE,
-          callDirection: null,
-          callCounterpart: null,
-          callIsOnHold: false,
-          dtmfSender: null,
-          callMicrophoneIsMuted: false,
+        this.setState({ rtcSession });
+
+
+        rtcSession.on('failed', () => {
+          if (this.ua !== ua) {
+            return;
+          }
+
+          if (this.state.rtcSession && this.state.rtcSession.connection) {
+            // Close senders, as these keep the microphone open according to browsers (and that keeps Bluetooth headphones from exiting headset mode)
+            this.state.rtcSession.connection.getSenders().forEach((sender) => {
+              if (sender.track) {
+                sender.track.stop();
+              }
+            });
+          }
+
+          this.setState({
+            rtcSession: null,
+            callStatus: CALL_STATUS_IDLE,
+            callDirection: null,
+            callCounterpart: null,
+            dtmfSender: null,
+            callMicrophoneIsMuted: false,
+          });
         });
-      });
 
-      const acceptHandler = () => {
-        if (this.ua !== ua) {
-          return;
-        }
+        rtcSession.on('ended', () => {
+          if (this.ua !== ua) {
+            return;
+          }
 
-        // Set outbound device, if provided
-        if (outboundAudioDeviceId) {
-          // Get the appropriate device and set the new stream
-          const constraints = {
-            audio: {
-              deviceId: {
-                exact: outboundAudioDeviceId,
-              },
-            },
-          };
-          navigator.mediaDevices
-            .getUserMedia(constraints)
-            .then((stream) => {
-              rtcSession.connection.getSenders().forEach((sender) => {
-                rtcSession.connection.removeStream(sender)
+          if (this.state.rtcSession && this.state.rtcSession.connection) {
+            // Close senders, as these keep the microphone open according to browsers (and that keeps Bluetooth headphones from exiting headset mode)
+            this.state.rtcSession.connection.getSenders().forEach((sender) => {
+              if (sender.track) {
+                sender.track.stop();
+              }
+            });
+          }
+
+          this.setState({
+            rtcSession: null,
+            callStatus: CALL_STATUS_IDLE,
+            callDirection: null,
+            callCounterpart: null,
+            callIsOnHold: false,
+            dtmfSender: null,
+            callMicrophoneIsMuted: false,
+          });
+        });
+
+        rtcSession.on('unhold', (e: HoldEvent) => {
+          this.logger.debug('rtcSession.unhold', e);
+
+          rtcSession.unmute({ audio: true, video: false });
+        });
+
+        rtcSession.on('accepted', () => {
+          if (this.ua !== ua) {
+            return;
+          }
+
+          // Set outbound device, if provided
+          // if (outboundAudioDeviceId) {
+          //   // Get the appropriate device and set the new stream
+          //   const constraints = {
+          //     audio: {
+          //       deviceId: {
+          //         exact: outboundAudioDeviceId,
+          //       },
+          //     },
+          //   };
+          //   navigator.mediaDevices
+          //     .getUserMedia(constraints)
+          //     .then((stream) => {
+          //       rtcSession.connection
+          //         .getRemoteStreams()
+          //         .forEach((remoteStream) => {
+          //           // @ts-ignore
+          //           rtcSession.connection.removeStream(remoteStream);
+          //         });
+          //       // @ts-ignore
+          //       rtcSession.connection.addStream(stream);
+          //     })
+          //     .catch((e) => {
+          //       this.logger.warn(
+          //         'Warning: Invalid audio device passed. Caught error:',
+          //       );
+          //       this.logger.warn(e);
+          //     });
+          // }
+
+          this.setRtcSessionOutboundDevice(outboundAudioDeviceId, rtcSession);
+
+          [
+            this.getRemoteAudioOrFail().srcObject,
+          ] = rtcSession.connection.getRemoteStreams();
+
+          // Set up DTMF
+          this.setState({
+            dtmfSender: rtcSession.connection.getSenders()[0].dtmf,
+          });
+
+          const played = this.getRemoteAudioOrFail().play();
+
+          if (typeof played !== 'undefined') {
+            played
+              .catch(() => {
+                /**/
               })
-              // rtcSession.connection.getRemoteStreams().forEach((remoteStream) => {
-              //   rtcSession.connection.removeStream(remoteStream);
-              // });
-              rtcSession.connection.addStream(stream);
-            })
-            .catch((e) => {
-              this.logger.warn('Warning: Invalid audio device passed. Caught error:');
-              this.logger.warn(e);
-            });
-        }
+              .then(() => {
+                setTimeout(() => {
+                  this.getRemoteAudioOrFail().play();
+                }, 2000);
+              });
+            // this.setState({ dtmfSender: rtcSession.connection.createDTMFSender(rtcSession.getAudioTracks()[0])});
+            this.setState({ callStatus: CALL_STATUS_ACTIVE });
+            return;
+          }
 
-        [this.getRemoteAudioOrFail().srcObject] = rtcSession.connection.getRemoteStreams();
+          setTimeout(() => {
+            this.getRemoteAudioOrFail().play();
+          }, 2000);
 
-        // Set up DTMF
-        this.setState({
-          dtmfSender: rtcSession.connection.getSenders()[0].dtmf,
+          this.setState({ callStatus: CALL_STATUS_ACTIVE });
         });
 
-        const played = this.getRemoteAudioOrFail().play();
-
-        if (typeof played !== 'undefined') {
-          played
-            .catch((e) => {
-              console.error(e);
-            })
-            .then(() => {
-              setTimeout(() => {
-                this.getRemoteAudioOrFail().play();
-              }, 2000);
-            });
-          // this.setState({ dtmfSender: rtcSession.connection.createDTMFSender(rtcSession.getAudioTracks()[0])});
-          this.setState({ callStatus: CALL_STATUS_ACTIVE });
-          return;
-        }
-
-        setTimeout(() => {
-          this.getRemoteAudioOrFail().play();
-        }, 2000);
-
-        this.setState({ callStatus: CALL_STATUS_ACTIVE });
-      }
-
-      rtcSession.on('accepted', () => acceptHandler());
-      rtcSession.on('unhold', () => acceptHandler());
-
-      if (this.state.callDirection === CALL_DIRECTION_INCOMING && this.props.autoAnswer) {
-        this.logger.log('Answer auto ON');
-        this.answerCall();
-      } else if (this.state.callDirection === CALL_DIRECTION_INCOMING && !this.props.autoAnswer) {
-        this.logger.log('Answer auto OFF');
-      } else if (this.state.callDirection === CALL_DIRECTION_OUTGOING) {
-        this.logger.log('OUTGOING call');
-      }
-    });
+        this.handleAutoAnswer();
+      },
+    );
 
     const extraHeadersRegister = this.props.extraHeaders.register || [];
     if (extraHeadersRegister.length) {
@@ -697,15 +718,56 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
     ua.start();
   }
 
-  render(): React.ReactNode {
-    return this.props.children;
+  private handleAutoAnswer() {
+    if (
+      this.state.callDirection === CALL_DIRECTION_INCOMING &&
+      this.props.autoAnswer
+    ) {
+      this.logger.log('Answer auto ON');
+      this.answerCall();
+    } else if (
+      this.state.callDirection === CALL_DIRECTION_INCOMING &&
+      !this.props.autoAnswer
+    ) {
+      this.logger.log('Answer auto OFF');
+    } else if (this.state.callDirection === CALL_DIRECTION_OUTGOING) {
+      this.logger.log('OUTGOING call');
+    }
   }
 
-  private createRemoteAudioElement(): WebAudioHTMLMediaElement {
-    const el = window.document.createElement('audio') as WebAudioHTMLMediaElement;
-    el.id = 'sip-provider-audio';
+  // @ts-ignore
+  private setRtcSessionOutboundDevice(outboundAudioDeviceId: string, rtcSession: RTCSession) {
+    if (!outboundAudioDeviceId) {
+      this.logger.error('setRtcSessionOutboundDevice: no outboundAudioDeviceId provided.');
+      return;
+    }
+    this.logger.debug('setRtcSessionOutboundDevice', { outboundAudioDeviceId });
 
-    return el;
+    // Get the appropriate device and set the new stream
+    const constraints: MediaStreamConstraints = {
+      audio: { deviceId: { exact: outboundAudioDeviceId } },
+    };
+    navigator.mediaDevices
+      .getUserMedia(constraints)
+      .then((stream) => {
+        this.logger.debug('rtcSession.accepted: Got user media', stream);
+        rtcSession.connection
+          .getSenders()
+          .forEach((sender) => {
+            rtcSession.connection.removeTrack(sender);
+          });
+
+        stream.getTracks().forEach((track) => {
+          rtcSession.connection.addTrack(track, stream);
+        });
+      })
+      .catch((e) => {
+        this.logger.error('Invalid audio device passed', e);
+      });
+  }
+
+  render(): React.ReactNode {
+    return this.props.children;
   }
 
   callHold = (useUpdate = false): void => {
@@ -733,8 +795,8 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
       return; // no-op
     }
 
-    this.state.rtcSession.renegotiate(options, done)
-  }
+    this.state.rtcSession.renegotiate(options, done);
+  };
 
   callUnhold = (useUpdate = false): void => {
     if (!this.state.rtcSession) {
@@ -788,4 +850,18 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
 
     return this.remoteAudio;
   };
+
+  private createRemoteAudioElement(): WebAudioHTMLMediaElement {
+    let el = window.document.getElementById('sip-provider-audio');
+
+    if (el) {
+      return el as WebAudioHTMLMediaElement;
+    }
+
+    el = window.document.createElement('audio');
+    el.id = 'sip-provider-audio';
+    window.document.body.appendChild(el);
+
+    return el as WebAudioHTMLMediaElement;
+  }
 }
