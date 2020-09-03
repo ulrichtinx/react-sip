@@ -31,6 +31,7 @@ import {
   SipErrorType,
   SipStatus,
 } from '../../lib/enums';
+import { mediaDeviceExists } from '../../lib/media';
 import {
   callPropType,
   ExtraHeaders,
@@ -130,6 +131,9 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
   private ua: JsSIP.UA | null = null;
   private remoteAudio: WebAudioHTMLMediaElement | null = null;
   private logger: Logger;
+  private currentSinkId: string | null = null;
+  // @ts-ignore
+  private isPlaying = false;
 
   constructor(props) {
     super(props);
@@ -392,7 +396,13 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
     }
   }
 
-  setAudioSinkId = (sinkId: string): Promise<undefined> => {
+  setAudioSinkId = async (sinkId: string): Promise<void> => {
+    if (this.currentSinkId && sinkId === this.currentSinkId) {
+      return;
+    }
+
+    this.currentSinkId = sinkId;
+
     return this.getRemoteAudioOrFail().setSinkId(sinkId);
   };
 
@@ -414,7 +424,6 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
       user,
       password,
       autoRegister,
-      // @ts-ignore
       inboundAudioDeviceId,
       outboundAudioDeviceId,
     } = this.props;
@@ -428,10 +437,20 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
       return;
     }
 
-    if (outboundAudioDeviceId) {
-      this.remoteAudio = this.createRemoteAudioElement();
-      this.logger.debug(`Audio.Inbound: Setting sinkId to ${outboundAudioDeviceId}`);
-      await this.remoteAudio.setSinkId(outboundAudioDeviceId);
+    let outputDeviceId = outboundAudioDeviceId;
+    const exists = await mediaDeviceExists(outputDeviceId, 'audiooutput');
+    if (!outputDeviceId || !exists) {
+      outputDeviceId = 'default';
+    }
+
+    if (outputDeviceId) {
+      try {
+        this.remoteAudio = this.createRemoteAudioElement();
+        this.logger.debug(`Audio.OUTBOUND: Setting sinkId to ${outputDeviceId}`);
+        await this.setAudioSinkId(outputDeviceId);
+      } catch (e) {
+        this.logger.error('AUDIO.OUTBOUND: Could not set sinkId', e);
+      }
     }
 
     try {
@@ -447,7 +466,6 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
       // @ts-ignore
       window.UA_SOCKET = socket;
     } catch (error) {
-      this.logger.error('AUDIO.INCOMING: Could not set sinkId', error);
       this.setState({
         sipStatus: SIP_STATUS_ERROR,
         sipErrorType: SIP_ERROR_TYPE_CONFIGURATION,
@@ -612,7 +630,8 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
           }
 
           if (this.state.rtcSession && this.state.rtcSession.connection) {
-            // Close senders, as these keep the microphone open according to browsers (and that keeps Bluetooth headphones from exiting headset mode)
+            // Close senders, as these keep the microphone open according to browsers
+            // and keeps Bluetooth headphones from exiting headset mode
             this.state.rtcSession.connection.getSenders().forEach((sender) => {
               if (sender.track) {
                 sender.track.stop();
@@ -633,8 +652,30 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
 
         rtcSession.on('unhold', (e: HoldEvent) => {
           this.logger.debug('rtcSession.unhold', e);
+        });
 
-          rtcSession.unmute({ audio: true, video: false });
+        rtcSession.on('peerconnection', (pc) => {
+          const remoteAudio = this.getRemoteAudioOrFail();
+          remoteAudio.srcObject = pc.peerconnection.getRemoteStreams()[0];
+
+          pc.peerconnection.addEventListener('addstream', (event: MediaStreamEvent) => {
+            this.logger.debug('connection.addstream', event);
+            const stream = event.stream;
+
+            if (stream) {
+              this.logger.debug('connection.addstream: set remoteAudio.srcObject', stream);
+              remoteAudio.srcObject = stream;
+
+              remoteAudio.play()
+                .then(() => {
+                  this.logger.debug('remoteAudio: playing');
+                  this.isPlaying = true;
+                }).catch((e) => {
+                this.logger.error('remoteAudio: not playing', e);
+                this.isPlaying = false;
+              });
+            }
+          });
         });
 
         rtcSession.on('accepted', () => {
@@ -642,67 +683,34 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
             return;
           }
 
-          // Set outbound device, if provided
-          // if (outboundAudioDeviceId) {
-          //   // Get the appropriate device and set the new stream
-          //   const constraints = {
-          //     audio: {
-          //       deviceId: {
-          //         exact: outboundAudioDeviceId,
-          //       },
-          //     },
-          //   };
-          //   navigator.mediaDevices
-          //     .getUserMedia(constraints)
-          //     .then((stream) => {
-          //       rtcSession.connection
-          //         .getRemoteStreams()
-          //         .forEach((remoteStream) => {
-          //           // @ts-ignore
-          //           rtcSession.connection.removeStream(remoteStream);
-          //         });
-          //       // @ts-ignore
-          //       rtcSession.connection.addStream(stream);
-          //     })
-          //     .catch((e) => {
-          //       this.logger.warn(
-          //         'Warning: Invalid audio device passed. Caught error:',
-          //       );
-          //       this.logger.warn(e);
-          //     });
-          // }
+          // Set input device, if provided
+          if (inboundAudioDeviceId) {
+            // Get the appropriate device and set the new stream
+            const constraints = { audio: { deviceId: { exact: inboundAudioDeviceId } } };
+            navigator.mediaDevices
+              .getUserMedia(constraints)
+              .then((stream) => {
 
-          this.setRtcSessionOutboundDevice(outboundAudioDeviceId, rtcSession);
-
-          [
-            this.getRemoteAudioOrFail().srcObject,
-          ] = rtcSession.connection.getRemoteStreams();
+                stream.getAudioTracks().forEach((track) => {
+                  if (track) {
+                    this.logger.debug(`AUDIO.INBOUND: Attaching track`, track);
+                    rtcSession.connection.getSenders().forEach((sender) => {
+                      this.logger.debug('AUDIO.INBOUND: Replacing track', { sender }, { track });
+                      sender.replaceTrack(track);
+                    });
+                    // rtcSession.connection.addTrack(track);
+                  }
+                });
+              })
+              .catch((e) => {
+                this.logger.error('AUDIO.INBOUND: Invalid audio device passed.', e);
+              });
+          }
 
           // Set up DTMF
           this.setState({
-            dtmfSender: rtcSession.connection.getSenders()[0].dtmf,
+            dtmfSender: rtcSession.connection.getSenders().filter(x => x.dtmf)[0].dtmf,
           });
-
-          const played = this.getRemoteAudioOrFail().play();
-
-          if (typeof played !== 'undefined') {
-            played
-              .catch(() => {
-                /**/
-              })
-              .then(() => {
-                setTimeout(() => {
-                  this.getRemoteAudioOrFail().play();
-                }, 2000);
-              });
-            // this.setState({ dtmfSender: rtcSession.connection.createDTMFSender(rtcSession.getAudioTracks()[0])});
-            this.setState({ callStatus: CALL_STATUS_ACTIVE });
-            return;
-          }
-
-          setTimeout(() => {
-            this.getRemoteAudioOrFail().play();
-          }, 2000);
 
           this.setState({ callStatus: CALL_STATUS_ACTIVE });
         });
@@ -733,37 +741,6 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
     } else if (this.state.callDirection === CALL_DIRECTION_OUTGOING) {
       this.logger.log('OUTGOING call');
     }
-  }
-
-  // @ts-ignore
-  private setRtcSessionOutboundDevice(outboundAudioDeviceId: string, rtcSession: RTCSession) {
-    if (!outboundAudioDeviceId) {
-      this.logger.error('setRtcSessionOutboundDevice: no outboundAudioDeviceId provided.');
-      return;
-    }
-    this.logger.debug('setRtcSessionOutboundDevice', { outboundAudioDeviceId });
-
-    // Get the appropriate device and set the new stream
-    const constraints: MediaStreamConstraints = {
-      audio: { deviceId: { exact: outboundAudioDeviceId } },
-    };
-    navigator.mediaDevices
-      .getUserMedia(constraints)
-      .then((stream) => {
-        this.logger.debug('rtcSession.accepted: Got user media', stream);
-        rtcSession.connection
-          .getSenders()
-          .forEach((sender) => {
-            rtcSession.connection.removeTrack(sender);
-          });
-
-        stream.getTracks().forEach((track) => {
-          rtcSession.connection.addTrack(track, stream);
-        });
-      })
-      .catch((e) => {
-        this.logger.error('Invalid audio device passed', e);
-      });
   }
 
   render(): React.ReactNode {
@@ -815,6 +792,10 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
       };
       this.state.rtcSession.unhold(options, done);
     }
+
+    this.callUnmuteMicrophone();
+    this.getRemoteAudioOrFail().muted = false;
+    this.getRemoteAudioOrFail().volume = 1;
   };
 
   callToggleHold = (useUpdate = false): void => {
@@ -852,14 +833,17 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
   };
 
   private createRemoteAudioElement(): WebAudioHTMLMediaElement {
-    let el = window.document.getElementById('sip-provider-audio');
+    const id = 'sip-provider-audio';
+    let el = window.document.getElementById(id);
 
     if (el) {
       return el as WebAudioHTMLMediaElement;
     }
 
-    el = window.document.createElement('audio');
-    el.id = 'sip-provider-audio';
+    el = window.document.createElement('audio') as WebAudioHTMLMediaElement;
+    el.id = id;
+    (el as WebAudioHTMLMediaElement).autoplay = true;
+
     window.document.body.appendChild(el);
 
     return el as WebAudioHTMLMediaElement;

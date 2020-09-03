@@ -80,11 +80,11 @@ export const callPropType = PropTypes.shape({
 });
 
 /**
- * Extended version of {HTMLMediaElement} with typings for the Audio Output Devices API
+ * Extended version of {HTMLAudioElement} with typings for the Audio Output Devices API
  *
  * @link https://w3c.github.io/mediacapture-output/#htmlmediaelement-extensions
  */
-export interface WebAudioHTMLMediaElement extends HTMLMediaElement {
+export interface WebAudioHTMLMediaElement extends HTMLAudioElement {
   readonly sinkId: string;
 
   /**
