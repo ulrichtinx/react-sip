@@ -49,6 +49,7 @@ ReactDOM.render(
     debug={false} // whether to output events to console; false by default
     incomingAudioDeviceId={"default"} // default, or a deviceId obtained from navigator.mediaDevices.enumerateDevices()
     outboundAudioDeviceId={"default"} // default, or a deviceId obtained from navigator.mediaDevices.enumerateDevices()
+    dtmfTransportType={"RFC4733" | "INFO" | "RFC2733"} // DTMF tone transport method
   >
     <App />
   </SipProvider>
@@ -56,21 +57,17 @@ ReactDOM.render(
 );
 ```
 
-Child components get access to this context:
+Child components get access to the context by implementing this:
 
 ```js
-{
-  sip: sipType,
-  call: callType,
+function Child(props, SipProvider) {
 
-  registerSip: PropTypes.func,
-  unregisterSip: PropTypes.func,
-
-  answerCall: PropTypes.func,
-  startCall: PropTypes.func,
-  stopCall: PropTypes.func,
-  sendDTMF: PropTypes.func,
+  return (
+    <h1>{SipProvider.call.status}</h1>
+  );
 }
+
+Child.contextTypes = SipProvider.childContextTypes;
 ```
 
 See [lib/types.ts](./src/lib/types.ts) for technical details of what `sipType` and `callType` are.

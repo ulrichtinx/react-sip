@@ -41,6 +41,7 @@ import {
   sipPropType,
   WebAudioHTMLMediaElement,
 } from '../../lib/types';
+import {DTMF_TRANSPORT} from "jssip/lib/Constants";
 
 export interface JsSipConfig {
   host: string;
@@ -58,6 +59,7 @@ export interface JsSipConfig {
   debug: boolean;
   inboundAudioDeviceId: string;
   outboundAudioDeviceId: string;
+  dtmfTransportType: string;
   debugNamespaces?: string | null;
 }
 
@@ -105,6 +107,7 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
     debug: PropTypes.bool,
     inboundAudioDeviceId: PropTypes.string,
     outboundAudioDeviceId: PropTypes.string,
+    dtmfTransportType: PropTypes.string,
 
     children: PropTypes.node,
   };
@@ -125,6 +128,7 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
     debug: false,
     inboundAudioDeviceId: '',
     outboundAudioDeviceId: '',
+    dtmfTransportType: 'RFC4733',
 
     children: null,
   };
@@ -199,20 +203,6 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
     return this.ua;
   }
 
-  getUAOrFail(): JsSIP.UA {
-    const ua = this.getUA();
-
-    if (!ua) {
-      throw new Error('JsSIP.UA not initialized');
-    }
-
-    return ua;
-  }
-
-  getAudioElement(): HTMLAudioElement | null {
-    return this.remoteAudio;
-  }
-
   componentDidMount(): void {
     if (window.document.getElementById('sip-provider-audio')) {
       throw new Error(
@@ -242,7 +232,8 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
       this.props.password !== prevProps.password ||
       this.props.autoRegister !== prevProps.autoRegister ||
       this.props.inboundAudioDeviceId !== prevProps.inboundAudioDeviceId ||
-      this.props.outboundAudioDeviceId !== prevProps.outboundAudioDeviceId
+      this.props.outboundAudioDeviceId !== prevProps.outboundAudioDeviceId ||
+      this.props.dtmfTransportType !== prevProps.dtmfTransportType
     ) {
       this.reinitializeJsSIP();
     }
@@ -386,8 +377,20 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
   };
 
   sendDTMF = (tones: string, duration: number = 100, interToneGap: number = 70) => {
-    if (this.state.callStatus === 'callStatus/ACTIVE' && this.state.dtmfSender) {
-      this.state.dtmfSender.insertDTMF(tones, duration, interToneGap);
+    if (this.state.callStatus === CALL_STATUS_ACTIVE && this.state.rtcSession) {
+      if (this.props.dtmfTransportType === 'RFC4733') {
+        if (this.state.dtmfSender) {
+          this.state.dtmfSender.insertDTMF(tones, duration, interToneGap);
+        } else {
+          this.logger.debug('REACT-SIP: Warning:', 'The call does not have a dtmfSender object');
+        }
+      } else if (this.props.dtmfTransportType === DTMF_TRANSPORT.INFO || this.props.dtmfTransportType === DTMF_TRANSPORT.RFC2833) {
+        this.state.rtcSession.sendDTMF(tones, {
+          duration,
+          interToneGap,
+          transportType: this.props.dtmfTransportType,
+        });
+      }
     } else {
       this.logger.debug('REACT-SIP: Warning:', 'You are attempting to send DTMF, but there is no active call.');
     }
