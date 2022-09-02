@@ -1,6 +1,6 @@
 {
     "name": "@tinxdk/react-sip",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "description": "React wrapper for jssip",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",

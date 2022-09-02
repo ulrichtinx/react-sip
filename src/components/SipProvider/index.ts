@@ -382,7 +382,7 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
         if (this.state.dtmfSender) {
           this.state.dtmfSender.insertDTMF(tones, duration, interToneGap);
         } else {
-          this.logger.debug('REACT-SIP: Warning:', 'The call does not have a dtmfSender object');
+          this.logger.warn('REACT-SIP: Warning:', 'The call does not have a dtmfSender object');
         }
       } else if (this.props.dtmfTransportType === DTMF_TRANSPORT.INFO || this.props.dtmfTransportType === DTMF_TRANSPORT.RFC2833) {
         this.state.rtcSession.sendDTMF(tones, {
@@ -390,9 +390,11 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
           interToneGap,
           transportType: this.props.dtmfTransportType,
         });
+      } else {
+        this.logger.warn('REACT-SIP: Warning:', 'You are attempting to send DTMF, using an unknown transport type: ' + this.props.dtmfTransportType);
       }
     } else {
-      this.logger.debug('REACT-SIP: Warning:', 'You are attempting to send DTMF, but there is no active call.');
+      this.logger.warn('REACT-SIP: Warning:', 'You are attempting to send DTMF, but there is no active call.');
     }
   };
 
