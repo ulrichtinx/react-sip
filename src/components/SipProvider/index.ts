@@ -630,7 +630,7 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
             callIsOnHold: rtcSession.isOnHold().local,
             callMicrophoneIsMuted: rtcSession.isMuted().audio || false,
           });
-          this.audioPlayer.play('ringing');
+          this.audioPlayer.play('ringing', 0.5);
         } else {
           this.logger.warn(`call originator expected to be either local or remote. Got: ${originator}`);
         }
