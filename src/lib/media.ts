@@ -1,4 +1,4 @@
-import dummyLogger from './dummyLogger';
+import {Logger} from "./types";
 
 export const mediaDeviceExists = async (deviceId: string, kind: 'audioinput' | 'audiooutput'): Promise<boolean> => {
   const devices = await navigator.mediaDevices.enumerateDevices();
@@ -24,22 +24,23 @@ const SOUNDS = new Map(
     ['ringback', {audio: new Audio(FILES['ringback']), volume: 1.0}],
     ['ringing', {audio: new Audio(FILES['ringing']), volume: 1.0}],
     ['answered', {audio: new Audio(FILES['answered']), volume: 1.0}],
-    ['rejected', {audio: new Audio(FILES['rejected']), volume: 0.5}],
+    ['rejected', {audio: new Audio(FILES['rejected']), volume: 1.0}],
   ]);
 
 let initialized = false;
 
 export const audioPlayer =
   {
+    logger: null,
     /**
      * Play all the sounds, so they will play in mobile browsers at any time
      */
-    initialize() {
+    initialize(logger: Logger) {
       if (initialized) {
         return;
       }
-
-      dummyLogger.debug('initialize()');
+      this.logger = console;
+      this.logger.debug('REACT-SIP(audioPlayer): initialize()');
 
       // @ts-ignore
       for (const sound of SOUNDS.values()) {
@@ -62,7 +63,7 @@ export const audioPlayer =
     play(name, relativeVolume = 1.0) {
       this.initialize();
 
-      dummyLogger.debug('REACT-SIP: play() [name:%s, relativeVolume:%s]', name, relativeVolume);
+      this.logger.debug('REACT-SIP(audioPlayer): play() [name:%s, relativeVolume:%s]', name, relativeVolume);
 
       const sound = SOUNDS.get(name);
 
@@ -74,18 +75,19 @@ export const audioPlayer =
         sound.audio.pause();
         sound.audio.currentTime = 0.0;
         sound.audio.volume = (sound.volume || 1.0) * relativeVolume;
+        this.logger.debug('REACT-SIP(audioPlayer): playing [volume:%s]', sound.audio.volume);
         sound.audio.play();
         if (name === 'ringing') {
           sound.audio.loop = true;
         }
       }
       catch (error) {
-        dummyLogger.warn('REACT-SIP: play() | error: %o', error);
+        this.logger.warn('REACT-SIP(audioPlayer): play() | error: %o', error);
       }
     },
 
     stop(name) {
-      dummyLogger.debug('REACT-SIP: stop() [name:%s]', name);
+      this.logger.debug('REACT-SIP(audioPlayer): stop() [name:%s]', name);
 
       const sound = SOUNDS.get(name);
 

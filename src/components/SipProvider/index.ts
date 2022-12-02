@@ -408,6 +408,7 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
       JsSIP.debug.disable();
       this.logger = dummyLogger;
     }
+    this.audioPlayer.initialize(this.logger);
   }
 
   setAudioSinkId = async (sinkId: string): Promise<void> => {
@@ -630,16 +631,17 @@ export default class SipProvider extends React.Component<JsSipConfig, JsSipState
             callIsOnHold: rtcSession.isOnHold().local,
             callMicrophoneIsMuted: rtcSession.isMuted().audio || false,
           });
-          this.audioPlayer.play('ringing', 0.5);
+          this.logger.info(`REACT-SIP: Playing ringing sound`);
+          this.audioPlayer.play('ringing', 0.4);
         } else {
-          this.logger.warn(`call originator expected to be either local or remote. Got: ${originator}`);
+          this.logger.warn(`REACT-SIP: call originator expected to be either local or remote. Got: ${originator}`);
         }
 
         this.setState({rtcSession});
         this.logger.debug('REACT-SIP: new session', originator, rtcSession);
 
         rtcSession.on('failed', (event) => {
-          audioPlayer.stop('ringing');
+          this.audioPlayer.stop('ringing');
           if (this.ua !== ua) {
             return;
           }
